@@ -1,8 +1,8 @@
 {
-  "name": "chromium",
-  "version": "1.0.2",
+  "name": "node-chromium",
+  "version": "62.0.0",
   "description": "Chromium binaries for Node.js projects",
-  "repository": "dtolstyi/node-chromium",
+  "repository": "driq/node-chromium",
   "main": "index.js",
   "os": [
     "darwin",
@@ -24,15 +24,15 @@
     "chrome",
     "browser"
   ],
-  "author": "Dmytro TOLSTYI <dmytro.tolstyi@gmail.com>",
+  "author": "Hendrik Wouters <info@hendrikwouters.nl>",
   "license": "MIT",
   "xo": {
     "space": 4
   },
   "dependencies": {
-    "extract-zip": "^1.6.5",
+    "extract-zip": "^1.6.6",
     "got": "^7.1.0",
-    "tmp": "0.0.33"
+    "tmp": "~0.0.33"
   },
   "devDependencies": {
     "ava": "^0.22.0",

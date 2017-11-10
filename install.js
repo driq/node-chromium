@@ -5,6 +5,7 @@ const extractZip = require('extract-zip');
 const got = require('got');
 const tmp = require('tmp');
 
+const npmPackage = require('./package');
 const config = require('./config');
 const utils = require('./utils');
 
@@ -35,13 +36,61 @@ function getOsCdnUrl() {
     return url;
 }
 
-function getLatestRevisionNumber() {
+function getCurrentOs() {
+    const platform = process.platform;
+
+    if (platform === 'linux') {
+        return 'linux';
+    }
+
+    if (platform === 'win32') {
+        return 'win'
+    }
+
+    if (platform === 'darwin') {
+        return 'mac';
+    }
+
+    console.log('Unknown platform found:', process.platform);
+    throw new Error('Unsupported platform');
+}
+
+function getRevisionNumberForMajorVersion() {
     return new Promise((resolve, reject) => {
-        const url = getOsCdnUrl() + '%2FLAST_CHANGE?alt=media';
+        const url = 'https://omahaproxy.appspot.com/all.json';
+        const currentOs = getCurrentOs();
+        const packageMajorVersion = npmPackage.version.split('.')[0];
+
         got(url)
             .then(response => {
-                resolve(response.body);
-            })
+                    let revisionNumber;
+                    let platforms = JSON.parse(response.body);
+
+                    for (let platform of platforms) {
+                        if (platform['os'] !== currentOs) {
+                            continue;
+                        }
+
+                        for (let version of platform['versions']) {
+                            let buildMajorVersion = version['version'].split('.')[0];
+
+                            if (buildMajorVersion !== packageMajorVersion) {
+                                continue;
+                            }
+
+                            revisionNumber = version['branch_base_position'];
+                            console.log('Found Chromium version ' + version['version'] + ' with build number ' + revisionNumber + '.');
+
+                            resolve(revisionNumber);
+                        }
+
+                    }
+
+                    if (!revisionNumber) {
+                        console.error('Could not find a Chromium build with major version ' + packageMajorVersion + '. Only recent builds are available for download.');
+                    }
+                }
+            )
             .catch(err => {
                 console.log('An error occured while trying to retrieve latest revision number', err);
                 reject(err);
@@ -66,7 +115,7 @@ function downloadChromiumRevision(revision) {
     return new Promise((resolve, reject) => {
         createTempFile()
             .then(path => {
-                console.log('Downloading Chromium archive from Google CDN');
+                console.log('Downloading Chromium ' + revision + ' from Google CDN');
                 const url = getOsCdnUrl() + `%2F${revision}%2F` + utils.getOsChromiumFolderName() + '.zip?alt=media';
                 got.stream(url)
                     .on('error', error => {
@@ -100,7 +149,7 @@ function unzipArchive(archivePath, outputFolder) {
     });
 }
 
-module.exports = getLatestRevisionNumber()
+module.exports = getRevisionNumberForMajorVersion()
     .then(downloadChromiumRevision)
     .then(path => unzipArchive(path, config.BIN_OUT_PATH))
     .catch(err => console.error('An error occurred while trying to setup Chromium. Resolve all issues and restart the process', err));
